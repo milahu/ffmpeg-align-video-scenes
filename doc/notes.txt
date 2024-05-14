@@ -1,0 +1,48 @@
+https://superuser.com/questions/819573/split-up-a-video-using-ffmpeg-through-scene-detection
+Split Up a Video Using FFMPEG through Scene Detection
+
+https://superuser.com/questions/692489/automatically-split-large-mov-video-files-into-smaller-files-at-black-frames-s
+Automatically split large .mov video files into smaller files at black frames (scene changes)?
+
+https://superuser.com/questions/1732197/how-to-use-video-filters-cropdetect-with-ffprobe
+How to use video filters (cropdetect) with ffprobe
+
+https://video.stackexchange.com/questions/16564/how-to-trim-out-black-frames-with-ffmpeg-on-windows
+How to trim out black frames with ffmpeg on windows?
+ffprobe -f lavfi -i "movie=input.mp4,blackdetect[out0]" -show_entries tags=lavfi.black_start,lavfi.black_end -of default=nw=1 -v quiet
+
+https://stackoverflow.com/questions/58971875/is-there-a-way-to-detect-black-on-ffmpeg-video-files
+Is there a way to detect black on FFMPEG video files
+
+https://stackoverflow.com/questions/44799312/ffprobe-ffmpg-silence-detection-command
+ffprobe/ffmpg silence detection command
+ffmpeg -i http://mystream.com/stream -af silencedetect=n=-50dB:d=0.5 -f null - 2> log.txt
+ffmpeg -i http://mystream.com/stream -af silencedetect=n=-50dB:d=0.5,ametadata=print:file=log.txt -f null -
+
+https://stackoverflow.com/questions/36074224/how-to-split-video-or-audio-by-silent-parts
+How to split video or audio by silent parts
+ffmpeg -i "input.mov" -af silencedetect=noise=-30dB:d=0.5 -f null - 2> vol.txt
+ffmpeg -ss <silence_end - 0.25> -t <next_silence_start - silence_end + 2 * 0.25> -i input.mov word-N.mov
+ffmpeg -i input.mkv -filter_complex "[0:a]silencedetect=n=-90dB:d=0.3[outa]" -map [outa] -f s16le -y /dev/null |& F='-aq 70 -v warning' perl -ne 'INIT { $ss=0; $se=0; } if (/silence_start: (\S+)/) { $ss=$1; $ctr+=1; printf "ffmpeg -nostdin -i input.mkv -ss %f -t %f $ENV{F} -y %03d.mkv\n", $se, ($ss-$se), $ctr; }  if (/silence_end: (\S+)/) { $se=$1; } END { printf "ffmpeg -nostdin -i input.mkv -ss %f $ENV{F} -y %03d.mkv\n", $se, $ctr+1; }' | bash -x
+https://gist.github.com/vi/2fe3eb63383fcfdad7483ac7c97e9deb
+https://gist.github.com/vi/2af29b9652a813ffe4b7e87c9a895f81
+
+https://stackoverflow.com/questions/55057778/how-can-i-split-an-mp4-video-with-ffmpeg-every-time-the-volume-is-zero
+How can I split an mp4 video with ffmpeg every time the volume is zero?
+
+https://stackoverflow.com/questions/60268497/parse-stats-in-ffprobe
+Parse stats in ffprobe
+ffprobe -f lavfi -i amovie=<audio_file>,astats=metadata=1:reset=4400 -hide_banner
+ffmpeg -f lavfi -i sine -t 1s -af 'astats=metadata=1:reset=4400:metadata=true,ametadata=mode=print:file=stats.txt' -f null -
+
+https://trac.ffmpeg.org/ticket/2493
+support filter options within ffprobe
+ffprobe 2>/dev/null -f lavfi amovie=038Robin.wav,ebur128=metadata=1 -show_frames -show_format
+
+https://stackoverflow.com/questions/28269871/cut-detection-with-ffprobe
+Cut detection with ffprobe
+I want to detect the cuts in certain range
+ffprobe -show_frames -of compact=p=0 -f lavfi "movie=test_clip.avi,select=gt(scene\,.4)" > test_clip_cuts.txt
+ffprobe -show_frames -of compact=p=0 -f lavfi "movie=test_clip.avi:seek_point=3,trim=3:8,select=gt(scene\,0.4)" > test_clip_cuts.txt
+ffprobe -show_frames -of compact=p=0 -f lavfi "movie=test_clip.avi:seek_point=3,trim=3:duration=5,select=gt(scene\,0.4)" > test_clip_cuts.txt
+"movie=test_clip.avi,select=between(t\,3\,8)*gt(scene\,.4)"
