@@ -1,0 +1,142 @@
+https://stackoverflow.com/questions/62047916/align-two-audios-with-similar-parts
+Align two audios with similar parts
+audio 1 has Music, Noises, English speech.
+audio 2 has Music, Noises, English speech, Foreign language speech.
+First and second tracks can differ by its windows, or gaps.
+
+https://dsp.stackexchange.com/questions/1418/synchronizing-two-audio-tracks
+
+https://superuser.com/questions/1639572/ffmpeg-to-detect-silence-in-the-right-channel-only
+ffmpeg -i input.wav -af "pan=1c|c0=c1,silencedetect=noise=-18dB:d=0.5" -f null -
+TODO ffmpeg silencedetect use center channel of 5.1 audio
+most dialog is in the center channel
+better: downmix to mono
+
+todo split + concat
+https://askubuntu.com/questions/1264779/how-to-split-an-mp3-file-by-detecting-silent-parts
+ffmpeg -i input.mp3 -af silencedetect -f null -
+ffmpeg -i input.mp3 -f segment -segment_times 1.20837,1.92546,3.51778,4.0881,6.40315,7.7922 -reset_timestamps 1 -map 0:a -c:a copy output_%03d.mp3
+
+split by silence
+https://efcomputer.net.au/blog/splitting-audio-files-by-detecting-silence-using-ffmpeg/
+ffmpeg -i src.wav -af silencedetect=n=-50dB:d=0.3 -f null - -hide_banner
+
+audio search
+https://dsp.stackexchange.com/questions/19289/find-short-clip-of-audio-within-longer-clip-of-audio
+Find Short Clip of Audio Within Longer Clip Of Audio
+-> cross-correlation
+-> phase-correlation
+If you go the cross-correlation route, I think that phase-correlation (variant) will give you much better results, than simply the basic cross-correlation.
+
+audio search
+https://dsp.stackexchange.com/questions/736/how-do-i-implement-cross-correlation-to-prove-two-audio-files-are-similar
+How do I implement cross-correlation to prove two audio files are similar?
+
+https://dev.to/hiisi13/find-an-audio-within-another-audio-in-10-lines-of-python-1866
+cross-correlation
+https://github.com/hiisi13/audio-offset-finder
+https://github.com/hiisi13/audio-offset-finder/raw/main/audio_offset_finder.py
+
+https://stackoverflow.com/questions/38971969/how-to-compare-audio-on-similarity-in-python
+Librosa has a segment_cross_similiarity function you can use to do this task, you only need to decide which features you want to cross-check
+
+https://daehnhardt.com/blog/2023/03/05/python-audio-signal-processing-with-librosa/
+
+https://stackoverflow.com/questions/64028753/find-signal-or-phase-delay-from-cross-correlation
+
+https://stackoverflow.com/questions/41492882/find-time-shift-of-two-signals-using-cross-correlation
+
+https://www.slingacademy.com/article/perform-cross-correlation-autocorrelation-numpy/
+Autocorrelation measures the similarity between a signal and its delayed version over varying intervals, helping identify repeating patterns or periodic signals.
+Cross-correlation, on the other hand, measures the similarity between two different signals, which can be useful in identifying the lagged relationship between them.
+
+https://stackoverflow.com/questions/30677241/how-to-limit-cross-correlation-window-width-in-numpy
+
+https://github.com/tritemio/pycorrelate
+cross-correlation over arbitrary time lags
+
+https://dsp.stackexchange.com/questions/9058/measuring-time-delay-of-audio-signals
+
+https://github.com/otrenav/audio-cross-correlation
+
+https://stackoverflow.com/questions/72564430/compare-two-audio-wav-files-using-cross-correlation-in-python
+
+https://stackoverflow.com/questions/33383650/using-cross-correlation-to-detect-an-audio-signal-within-another-signal
+
+https://stackoverflow.com/questions/62987317/the-normalized-cross-correlation-of-two-signals-in-python
+
+https://github.com/rpuntaie/syncstart
+
+https://stackoverflow.com/questions/74881441/why-is-scipys-cross-correlation-function-giving-incorrect-results-for-audio-sig
+
+https://stackoverflow.com/questions/30847431/cross-correlation-using-fft-producing-inaccurate-results
+So it turns out that the innaccuracy was coming from the fact that
+I was not in fact normalizing the series before passing them to the cross correlation functions.
+(I have updated my code to reflect this fact).
+While rnorm should produce mean 0, variance 1 observations,
+if it is slightly off that will produce the slight error I described.
+Just FYI, the original error I had was because
+I was sometimes truncating one of the timeseries after normalizing and de-meaning it,
+which was throwing off the normalization process.
+
+https://dsp.stackexchange.com/questions/50596/trouble-with-time-syncing-two-radio-signals-using-cross-correlation
+It will work when you take the 2nd gradient of the signals:
+import numpy as np
+from scipy import signal
+s0 = np.gradient(np.gradient(s0))
+s1 = np.gradient(np.gradient(s1))
+np.argmax(signal.correlate(s0, s1)) # -> 525358
+
+https://en.wikipedia.org/wiki/Dynamic_time_warping
+measuring similarity between two temporal sequences, which may vary in speed
+https://librosa.org/librosa_gallery/auto_examples/plot_music_sync.html
+https://dsp.stackexchange.com/questions/44564/synchronizing-2-seperate-speech-audio-signals
+https://dsp.stackexchange.com/questions/60617/how-to-compare-and-measure-the-similarity-between-two-between-two-signals
+
+https://dsp.stackexchange.com/questions/86224/find-out-time-offset-between-two-substantially-same-audio-tracks
+from scipy.signal import correlate
+from scipy.signal import correlation_lags
+# Make 2 vectors to test, 1 being a shifted version of the other
+x = np.asarray([1,2,3,4])
+y = np.asarray([.5,1,2,3])
+# Cross-correlate 
+correlation = correlate(x, y, 'full')
+# Get the lag vector that corresponds to the correlation vector
+lags = correlation_lags(x.size,  y.size, mode="full")
+# Find the lag at the peak of the correlation
+lag = lags[np.argmax(correlation)]
+print(lag)
+
+https://stackoverflow.com/questions/39336727/get-lag-with-cross-correlation
+
+https://stackoverflow.com/questions/62987317/the-normalized-cross-correlation-of-two-signals-in-python
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.signal import correlate
+#
+def plot_xcorr(x, y): 
+    "Plot cross-correlation (full) between two signals."
+    N = max(len(x), len(y)) 
+    n = min(len(x), len(y))
+    #
+    if N == len(y): 
+        lags = np.arange(-N + 1, n) 
+    else: 
+        lags = np.arange(-n + 1, N) 
+    c = correlate(x / np.std(x), y / np.std(y), 'full') 
+    #
+    plt.plot(lags, c / n) 
+    plt.show() 
+
+https://www.scicoding.com/practical-guide-to-cross-correlation/
+The frequency-domain method is based on the convolution theorem
+This method can be more computationally efficient when dealing with large datasets, as it utilizes the Fast Fourier Transform (FFT) algorithm.
+Maximum lag considered : The maximum lag considered in the CCF calculation also affects the computational complexity. As you increase the maximum lag, the number of computations in the time-domain method increases linearly
+
+https://www.liquidinstruments.com/what-is-cross-correlation-and-how-does-it-advance-spectrum-analysis/
+nice animation of cross-correlation
+
+https://github.com/google/audio-sync-kit
+Python library that compares two audio signals and obtains the latency (or delay) of one of the signals vs the other
+The algorithm can detect latencies in the range [-0.45*period, 0.45*period]
+

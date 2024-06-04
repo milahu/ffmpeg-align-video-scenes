@@ -1,5 +1,7 @@
 https://superuser.com/questions/819573/split-up-a-video-using-ffmpeg-through-scene-detection
 Split Up a Video Using FFMPEG through Scene Detection
+ffmpeg -i foo.mp4 -vf select='gt(scene\,0.4)' -vsync vfr frame%d.png
+ffprobe -show_frames -of compact=p=0 -f lavfi "movie=foo.mp4,select=gt(scene\,.4)" > foo.txt
 
 https://superuser.com/questions/692489/automatically-split-large-mov-video-files-into-smaller-files-at-black-frames-s
 Automatically split large .mov video files into smaller files at black frames (scene changes)?
@@ -46,3 +48,167 @@ ffprobe -show_frames -of compact=p=0 -f lavfi "movie=test_clip.avi,select=gt(sce
 ffprobe -show_frames -of compact=p=0 -f lavfi "movie=test_clip.avi:seek_point=3,trim=3:8,select=gt(scene\,0.4)" > test_clip_cuts.txt
 ffprobe -show_frames -of compact=p=0 -f lavfi "movie=test_clip.avi:seek_point=3,trim=3:duration=5,select=gt(scene\,0.4)" > test_clip_cuts.txt
 "movie=test_clip.avi,select=between(t\,3\,8)*gt(scene\,.4)"
+
+https://superuser.com/questions/669716/how-to-extract-all-key-frames-from-a-video-clip
+ffmpeg -skip_frame nokey -i 2.flv -vsync vfr -r 30 -frame_pts true -f image2 thumbnails-%02d.jpeg
+i had to remove `-r 30`
+add `-frame_pts true` to use the frame index for image names
+
+https://jdhao.github.io/2021/12/25/ffmpeg-extract-key-frame-video/
+ffmpeg -skip_frame nokey -i test.mp4 -vsync vfr -frame_pts true out-%010d.jpeg # keyframes
+ffmpeg -i test.mp4 -vf "select='eq(pict_type,I)'" -vsync vfr -frame_pts true out-%010d.jpeg # keyframes
+ffmpeg -i input.mp4 -vf "select='gt(scene,0.4)'" -vsync vfr -frame_pts true frame-%010d.jpg # scene frames
+
+detect black frames
+$ time ffprobe -f lavfi -i 'movie=Mike.Judges.Beavis.and.Butt-Head.S01E01.S01E02.German.DL.720p.WEB.x264-WvF.mkv,blackdetect[out0]' -show_entries tags=lavfi.black_start,lavfi.black_end -of default=nw=1 -v quiet
+real    8m56.608s
+user    13m19.445s
+sys     0m58.271s
+
+extract scene frames 0.4 = more selective = less frames
+$ time ffmpeg -hide_banner -loglevel quiet -i Mike.Judges.Beavis.and.Butt-Head.S01E01.S01E02.German.DL.720p.WEB.x264-WvF.mkv -vf "select='gt(scene,0.4)'" -vsync vfr -frame_pts true -f image2 sceneframes-WvF/%010d.png
+real    9m59.004s
+user    13m49.917s
+sys     0m58.510s
+
+extract scene frames 0.3 = less selective = more frames
+$ time ffmpeg -hide_banner -loglevel quiet -i Mike.Judges.Beavis.and.Butt-Head.S01E01.S01E02.German.DL.720p.WEB.x264-WvF.mkv -vf "select='gt(scene,0.3)'" -vsync vfr -frame_pts true -f image2 sceneframes-0.3-WvF/%010d.png
+real    8m59.577s
+user    14m4.122s
+sys     0m51.536s
+
+https://github.com/Breakthrough/PySceneDetect
+Python and OpenCV-based scene cut/transition detection program & library
+3k stars
+
+https://gist.github.com/dudewheresmycode/054c8de34762091b43530af248b369e7
+FFMPEG Scene Detection.md
+ffmpeg -i input.flv -filter:v "select='gt(scene,0.4)',showinfo" -f null -
+scene (video only) value between 0 and 1 to indicate a new scene;
+a low value reflects a low probability for the current frame to introduce a new scene,
+while a higher value means the current frame is more likely to be one
+
+
+
+TODO extract last frame before black frames and first frame after black frames
+
+https://shotstack.io/learn/ffmpeg-extract-frames/
+ffmpeg -i input.mp4 -ss 00:00:02 -frames:v 1 -frame_pts true frame-%d.jpg
+ffmpeg -i input.mp4 ss 0:00:00 -frames:v 1 -frame_pts true frame-%d.jpg
+
+https://stackoverflow.com/questions/38253406/extract-list-of-specific-frames-using-ffmpeg
+ffmpeg -i in.mp4 -vf select='eq(n\,100)+eq(n\,184)+eq(n\,213)' -vsync vfr -frame_pts true frames%d.jpg
+`-vsync vfr` is added which, in this case, tells it to suppress duplication.
+
+ffmpeg -vsync 0
+-vsync is deprecated. Use -fps_mode
+Passing a number to -vsync is deprecated, use a string argument as described in the manual.
+
+https://manual.audacityteam.org/man/audio_alignment.html
+not helpful
+
+https://github.com/slhck/ffmpeg-black-split
+Split a video based on black periods
+
+https://github.com/protyposis/AudioAlign/issues/26
+Trim silence?
+The two tracks are technically the same with just one exception:
+on scene/segment changes (3-4 times within 24 minutes), there's about a second of silence
+
+https://github.com/benfmiller/audalign
+Package for aligning audio files through audio fingerprinting
+
+https://github.com/Breakthrough/PySceneDetect
+
+https://unix.stackexchange.com/questions/545946/trim-an-audio-file-into-multiple-segments-using-ffmpeg-with-a-single-command
+Trim an audio file into multiple segments
+If the segments are non-overlapping, you can use the segment muxer.
+ffmpeg -i input.mp3 -vn -c copy -f segment -segment_times 0,8,22 output%d.mp3
+
+https://askubuntu.com/questions/1365857/using-ffmpeg-to-cut-up-video-at-multiple-points
+Using ffmpeg to cut up video at multiple points
+ffmpeg -f concat -i input.txt -c copy output.mp4
+
+https://stackoverflow.com/questions/50594412/cut-multiple-parts-of-a-video-with-ffmpeg
+Cut multiple parts of a video with ffmpeg
+ffmpeg -i video \
+       -vf "select='between(t,4,6.5)+between(t,17,26)+between(t,74,91)',
+            setpts=N/FRAME_RATE/TB" \
+       -af "aselect='between(t,4,6.5)+between(t,17,26)+between(t,74,91)',
+            asetpts=N/SR/TB" out.mp4
+
+https://stackoverflow.com/questions/42747935/cut-multiple-videos-and-merge-with-ffmpeg
+-filter_complex \
+"[0:v]trim=3.48:5.72,setpts=PTS-STARTPTS[v0]; \
+ [0:v]trim=6.56:8.68,setpts=PTS-STARTPTS[v0b]; \
+ [1:v]trim=13.52:15.36,setpts=PTS-STARTPTS[v1]; \
+ [1:v]trim=17.56:23.32,setpts=PTS-STARTPTS[v1b]; \
+ [2:v]trim=20.6:23.96,setpts=PTS-STARTPTS[v2]; \
+ [v0][v0b][v1][v1b][v2]concat=n=5:v=1:a=0[v]" \
+-map "[v]" -an -crf 17 output.mp4
+
+https://superuser.com/questions/681885/how-can-i-remove-multiple-segments-from-a-video-using-ffmpeg
+ffmpeg -i utv.ts -filter_complex \
+"[0:v]trim=duration=30[av];[0:a]atrim=duration=30[aa];\
+ [0:v]trim=start=40:end=50,setpts=PTS-STARTPTS[bv];\
+ [0:a]atrim=start=40:end=50,asetpts=PTS-STARTPTS[ba];\
+ [av][bv]concat[cv];[aa][ba]concat=v=0:a=1[ca];\
+ [0:v]trim=start=80,setpts=PTS-STARTPTS[dv];\
+ [0:a]atrim=start=80,asetpts=PTS-STARTPTS[da];\
+ [cv][dv]concat[outv];[ca][da]concat=v=0:a=1[outa]" -map [outv] -map [outa] out.ts
+
+
+https://gillesdegottex.gitlab.io/dfasma-website/screenshots.html
+analyse and compare audio files in time and frequency
+
+https://aws.amazon.com/blogs/media/metfc-automatically-compare-two-videos-to-find-common-content/
+Automatically compare two videos to find common content
+
+https://stackoverflow.com/questions/33926000/frame-difference-using-python
+
+https://pyimagesearch.com/2019/08/26/building-an-image-hashing-search-engine-with-vp-trees-and-opencv/
+Building an Image Hashing Search Engine with VP-Trees and OpenCV
+
+https://stackoverflow.com/questions/4196453/simple-and-fast-method-to-compare-images-for-similarity
+
+
+
+https://duckduckgo.com/?q=python+diff+iterable+sliding+window
+
+https://stackoverflow.com/questions/6822725/rolling-or-sliding-window-iterator
+
+
+
+https://superuser.com/questions/459313/how-to-cut-at-exact-frames-using-ffmpeg
+
+
+
+https://docs.python.org/3/library/difflib.html
+
+https://github.com/python/cpython/raw/3.12/Lib/difflib.py
+
+https://stackoverflow.com/questions/35517353/how-does-pythons-sequencematcher-work
+
+no. difflib.SequenceMatcher is a blocking diff algo, but we need a streaming diff algo
+
+https://stackoverflow.com/questions/25680947/pythons-difflib-sequencematcher-speed-up
+
+https://github.com/diff-match-patch-python/diff-match-patch
+
+
+
+
+https://www.google.com/search?q=%22diff+algorithm%22+infinite+sequence+limited+window+seek+forward+only
+
+
+https://github.com/jahwi/similar-vid
+uses decord to load video
+https://github.com/dmlc/decord
+2x faster sequential read than opencv
+
+
+
+sequence alignment
+https://github.com/ahishsujay/Sequence_Alignment
+https://github.com/dogacbasaran/Multiple-Audio-Alignment
+https://github.com/benfmiller/audalign

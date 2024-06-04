@@ -1,0 +1,151 @@
+https://duckduckgo.com/?q=diff+video+frames
+
+https://github.com/pixop/video-compare
+
+https://stackoverflow.com/questions/25774996/how-to-compare-show-the-difference-between-2-videos-in-ffmpeg
+
+
+
+https://duckduckgo.com/?q=find+missing+extra+frames+between+two+videos
+
+https://stackoverflow.com/questions/63750251/compare-two-video-then-cut-the-difference
+
+https://superuser.com/questions/1653430/how-to-compare-two-videos-and-get-timestamps-of-differing-frames
+
+https://forum.videohelp.com/threads/408408-Is-it-possible-to-compare-2-video-files-frame-by-frame
+
+https://github.com/DeltaFlyerW/AudioMatchVideoCut/raw/main/audioMatch.py
+
+
+
+https://duckduckgo.com/?q=videodiff
+
+https://github.com/ledstrain/VideoDiff
+A program to attempt to test a video source for temporal dithering and other visual artifacts
+-> no
+
+https://github.com/Gronis/videodiff
+I built this tool to sync old TV-broadcasted dubbed anime with a bluray version
+to join the dubbed audio together with the improved image quality that a bluray provides.
+-> no. find offset and tempo-change between two videos. no different cuts
+
+https://softwarerecs.stackexchange.com/questions/79432/looking-for-software-diff-for-video
+I’m looking for software that can identify the differences in scenes between two videos.
+That is, I’m interested in inserted or removed sections of a video.
+(Think “Which scenes does the director’s cut contain that aren’t in the standard release?”)
+This could either be a standalone tool or a feature of a larger video editing app.
+
+https://stackoverflow.com/questions/63750251/compare-two-video-then-cut-the-difference
+
+https://stackoverflow.com/questions/65595629/obtaining-matching-image-frames-from-videos-with-two-different-frame-rates
+
+https://stackoverflow.com/questions/33300789/how-to-compare-visually-two-look-alike-videos-of-different-codec-size-resoluti
+
+https://stackoverflow.com/questions/17741122/comparing-multiple-videos
+
+TODO use ffmpeg to detect scene change
+
+
+
+https://duckduckgo.com/?q=python+compare+two+videos+frame+by+frame&ia=web
+
+https://stackoverflow.com/questions/42902100/comparing-two-exact-videos-using-opencv-python
+
+https://answers.opencv.org/question/194295/compare-video-frames/
+
+https://github.com/qrzeller/OpenCV-Video-Comparison
+no. too complex
+
+https://github.com/Cadrew/ocs-video-comparison
+https://github.com/Cadrew/ocs-video-comparison/raw/master/ocs_comparison.py
+not perfect... extracts ALL images, then compares all images...
+should be incremental, streaming... frame by frame
+
+https://superuser.com/questions/1653430/how-to-compare-two-videos-and-get-timestamps-of-differing-frames
+no. this compares two exact same videos
+
+https://stackoverflow.com/questions/28935851/how-to-compare-a-video-with-a-reference-video-using-opencv-and-python
+
+https://docs.opencv.org/4.x/d5/dc4/tutorial_video_input_psnr_ssim.html
+Video Input with OpenCV and similarity measurement
+
+https://www.python-engineer.com/posts/opencv-videos/
+
+https://stackoverflow.com/questions/4880750/python-method-or-class-to-compare-two-video-files
+
+https://stackoverflow.com/questions/33311153/python-extracting-and-saving-video-frames
+
+https://github.com/dfrysinger/VideoDiff
+
+https://github.com/0f502a/VideoDiff
+
+https://neil.fraser.name/writing/diff/
+
+https://ably.com/blog/practical-guide-to-diff-algorithms
+
+http://simplygenius.net/Article/DiffTutorial1
+
+https://github.com/dmtrKovalenko/odiff
+The fastest pixel-by-pixel image visual difference tool in the world.
+no python bindings : (
+
+https://old.reddit.com/r/ffmpeg/comments/jnfco8/ffmpeg_comparing_the_content_of_two_video_files/
+
+https://github.com/Kagami/video-tools
+
+https://duckduckgo.com/?q=ffmpeg+ssim&ia=web
+
+https://github.com/slhck/ffmpeg-quality-metrics
+PSNR, SSIM, VMAF, VIF
+not streaming?
+
+
+
+https://ffmpeg.org/ffmpeg-filters.html#ssim
+
+Obtain the SSIM (Structural SImilarity Metric) between two input videos.
+
+This filter takes in input two input videos, the first input is considered the "main" source and is passed unchanged to the output. The second input is used as a "reference" video for computing the SSIM.
+
+Both video inputs must have the same resolution and pixel format for this filter to work correctly. Also it assumes that both inputs have the same number of frames, which are compared one by one.
+
+The filter stores the calculated SSIM of each frame.
+
+The description of the accepted parameters follows.
+
+stats_file, f
+If specified the filter will use the named file to save the SSIM of each individual frame. When filename equals "-" the data is sent to standard output.
+
+The file printed if stats_file is selected, contains a sequence of key/value pairs of the form key:value for each compared couple of frames.
+
+A description of each shown parameter follows:
+
+n
+sequential number of the input frame, starting from 1
+
+Y, U, V, R, G, B
+SSIM of the compared frames for the component specified by the suffix.
+
+All
+SSIM of the compared frames for the whole frame.
+
+dB
+Same as above but in dB representation.
+
+This filter also supports the framesync options.
+
+11.244.1 Examples
+
+For example:
+
+movie=ref_movie.mpg, setpts=PTS-STARTPTS [main]; [main][ref] ssim="stats_file=stats.log" [out]
+
+On this example the input file being processed is compared with the reference file ref_movie.mpg. The SSIM of each individual frame is stored in stats.log.
+
+Another example with both psnr and ssim at same time:
+
+ffmpeg -i main.mpg -i ref.mpg -lavfi  "ssim;[0:v][1:v]psnr" -f null -
+
+Another example with different containers:
+
+ffmpeg -i main.mpg -i ref.mkv -lavfi  "[0:v]settb=AVTB,setpts=PTS-STARTPTS[main];[1:v]settb=AVTB,setpts=PTS-STARTPTS[ref];[main][ref]ssim" -f null -
