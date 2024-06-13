@@ -265,18 +265,35 @@ def window(seq, n=2):
 # TODO benchmark: cv2.VideoCapture vs decord.VideoReader
 # vs https://github.com/chenxinfeng4/ffmpegcv
 # vs https://github.com/abhiTronix/vidgear
-'''
+# TODO also benchmark memory usage. space versus time tradeoff
+# TODO cv2 with multithreading
+# https://pyimagesearch.com/2017/02/06/faster-video-file-fps-with-cv2-videocapture-and-opencv/
+
+# cv2.VideoCapture
 def create_video_reader(video_path):
     return cv2.VideoCapture(video_path)
 
-def iter_images(video_reader):
+def iter_images(video_reader, start_idx=0):
+    print(f"iter_images: seeking to {start_idx}")
+    video_reader.set(cv2.CAP_PROP_POS_FRAMES, start_idx)
     while True:
         success, image = video_reader.read()
         if not success:
             return # StopIteration?
-        yield image
-'''
+        frame = int(video_reader.get(cv2.CAP_PROP_POS_FRAMES)) - 1
+        yield (frame, image)
 
+def get_width_height(video_reader):
+    success, image = video_reader.read()
+    assert success, f"failed to read first frame of video_reader {video_reader}"
+    frame = int(video_reader.get(cv2.CAP_PROP_POS_FRAMES)) - 1
+    video_reader.set(cv2.CAP_PROP_POS_FRAMES, frame)
+    height = len(image)
+    width = len(image[0])
+    return width, height
+
+# decord.VideoReader
+'''
 def create_video_reader(video_path):
     return decord.VideoReader(video_path)
 
@@ -285,6 +302,14 @@ def iter_images(video_reader, start_idx=0):
         # .asnumpy() # https://github.com/dmlc/decord/issues/208
         image = video_reader[frame].asnumpy()
         yield (frame, image)
+
+def get_width_height(video_reader):
+    frame = 0
+    image = video_reader[frame].asnumpy()
+    height = len(image)
+    width = len(image[0])
+    return width, height
+'''
 
 def iter_hashes(video_reader, start_idx=0):
     for frame, image in iter_images(video_reader, start_idx):
@@ -324,12 +349,7 @@ else:
     print("videodiff --test")
     sys.exit(1)
 
-def get_width_height(video_reader):
-    frame = 0
-    image = video_reader[frame].asnumpy()
-    height = len(image)
-    width = len(image[0])
-    return width, height
+print("videodiff.py", video_path_1, video_path_2)
 
 video_reader_1 = create_video_reader(video_path_1)
 video_reader_2 = create_video_reader(video_path_2)
@@ -347,14 +367,36 @@ min_height = min(height0, height1)
 #win2_it = iter(window(iter_hashes(video_reader_2)))
 
 # should be odd number so we have a center
+# more needs more memory
 # win2_size = 9
-win2_size = 45
+#win2_size = 45
+win2_size = 545
 
 win2_center_idx = win2_size // 2
 
 start_idx = 0
 # debug: seek into video to first diff
 start_idx = 300 - win2_center_idx
+start_idx = 860 - win2_center_idx
+start_idx = 43208 - win2_center_idx
+start_idx = 44120 - win2_center_idx
+start_idx = 44390 - win2_center_idx
+start_idx = 45450 - win2_center_idx # todo 45460 no match
+start_idx = 67340 - win2_center_idx
+
+# TODO
+# video1 914 =ssim= 914 video2 @ offset 0
+# video1 915: no match
+start_idx = 910 - win2_center_idx
+
+# TODO
+# video1 5626 =ssim= 5626 video2 @ offset 0
+# video1 5627: no match
+# start_idx = 5620 - win2_center_idx
+
+
+
+assert start_idx >= 0, f"expected: start_idx >= 0. actual: start_idx = {start_idx}"
 
 hash1_it = iter(iter_hashes(video_reader_1, start_idx))
 win2_it = iter(window(iter_hashes(video_reader_2, start_idx), win2_size))
@@ -436,6 +478,7 @@ time.sleep(1) # wait for feh
 # https://stackoverflow.com/questions/68545688
 # https://stackoverflow.com/questions/38686359
 # https://stackoverflow.com/questions/69188430
+# https://github.com/kkroening/ffmpeg-python/issues/246
 def open_ffmpeg_stream_process(width, height):
     args = (
         #"ffmpeg -re -stream_loop -1 -f rawvideo -pix_fmt "
@@ -497,7 +540,8 @@ max_hashdiff = 9999
 
 # minimum image similarity (ssim)
 # TODO verify. some matches have 0.95, some mismatches have 0.6
-min_imagesim = 0.9
+# frame1 45460 - imagesim 0.8967622243723549
+min_imagesim = 0.8
 
 # FIXME get random seek access to image1 and image2
 # when the offset changes in one iteration
@@ -506,7 +550,8 @@ offset = 0
 
 # diff loop
 # expected: 18 frames extra in vector-spionbruder-h1080p = video2
-for step in range(100):
+#for step in range(100):
+for step in range(999999999):
 
     frame1, image1, hash1 = next(hash1_it)
 
@@ -569,8 +614,10 @@ for step in range(100):
     win2_idx = win2_center_idx
     frame2, image2, hash2 = win2[win2_idx]
 
+    '''
     image1_path = f"/run/user/{os.getuid()}/videodiff.py.frame1-{frame1:05d}-image1.jpg"
     PIL.Image.fromarray(image1).resize((video1_width, video1_height)).save(image1_path, format="jpeg")
+    '''
     #print(f"writing {image1_path}")
 
     # center of win2
@@ -579,10 +626,12 @@ for step in range(100):
     hashdiff = compare_hashes(hash1, hash2)
     if hashdiff < max_hashdiff:
         offset = frame2 - frame1
-        print(f"video1 {frame1} =hash= {frame2} video2 @ offset {offset}")
+        print(f"video1 {frame1} =hash= {frame2} video2 @ offset {offset} @ hashdiff {hashdiff}")
+        '''
         image2_path = f"/run/user/{os.getuid()}/videodiff.py.frame1-{frame1:05d}-image2-{frame2:05d}-hashdiff-{hashdiff}.jpg"
         PIL.Image.fromarray(image2).resize((video1_width, video1_height)).save(image2_path, format="jpeg")
         #print(f"writing {image2_path}")
+        '''
         win2 = next(win2_it)
         continue
 
@@ -595,16 +644,20 @@ for step in range(100):
     #if True: # debug
     if imagesim > min_imagesim:
         offset = frame2 - frame1
-        print(f"video1 {frame1} =ssim= {frame2} video2 @ offset {offset}")
+        print(f"video1 {frame1} =ssim= {frame2} video2 @ offset {offset} @ imagesim {imagesim}")
+        '''
         image2_path = f"/run/user/{os.getuid()}/videodiff.py.frame1-{frame1:05d}-image2-{frame2:05d}-hashdiff-{hashdiff}-imagesim-{imagesim}.jpg"
         PIL.Image.fromarray(image2).resize((video1_width, video1_height)).save(image2_path, format="jpeg")
         #print(f"writing {image2_path}")
+        '''
         win2 = next(win2_it)
         continue
 
+    '''
     image2_path = f"/run/user/{os.getuid()}/videodiff.py.frame1-{frame1:05d}-image2-{frame2:05d}-hashdiff-{hashdiff}-imagesim-{imagesim}.jpg"
     PIL.Image.fromarray(image2).resize((video1_width, video1_height)).save(image2_path, format="jpeg")
     #print(f"writing {image2_path}")
+    '''
 
     # TODO find next best match in a limited range, or none
     # TODO first try hash_image, then try compare_images
@@ -640,10 +693,12 @@ for step in range(100):
             #    matches.append((hashdiff, frame2))
             if hashdiff < max_hashdiff:
                 offset = frame2 - frame1
-                print(f"video1 {frame1} =hash= {frame2} video2 @ offset {offset}")
+                print(f"video1 {frame1} =hash= {frame2} video2 @ offset {offset} @ hashdiff {hashdiff}")
+                '''
                 image2_path = f"/run/user/{os.getuid()}/videodiff.py.frame1-{frame1:05d}-image2-{frame2:05d}-hashdiff-{hashdiff}.jpg"
                 PIL.Image.fromarray(image2).resize((video1_width, video1_height)).save(image2_path, format="jpeg")
                 #print(f"writing {image2_path}")
+                '''
                 win2 = next(win2_it)
                 found_match = True
                 break
@@ -664,16 +719,29 @@ for step in range(100):
             #    matches.append((hashdiff, frame2))
             if imagesim > min_imagesim:
                 offset = frame2 - frame1
-                print(f"video1 {frame1} =ssim= {frame2} video2 @ offset {offset}")
+                print(f"video1 {frame1} =ssim= {frame2} video2 @ offset {offset} @ imagesim {imagesim}")
+                '''
                 image2_path = f"/run/user/{os.getuid()}/videodiff.py.frame1-{frame1:05d}-image2-{frame2:05d}-hashdiff-{hashdiff}-imagesim-{imagesim}.jpg"
                 PIL.Image.fromarray(image2).resize((video1_width, video1_height)).save(image2_path, format="jpeg")
                 #print(f"writing {image2_path}")
+                '''
                 win2 = next(win2_it)
                 found_match = True
                 break
 
     if not found_match:
         print(f"video1 {frame1}: no match")
+        image1_path = f"/run/user/{os.getuid()}/videodiff.py.frame1-{frame1:05d}-no-match-image1.jpg"
+        print(f"writing {image1_path}")
+        PIL.Image.fromarray(image1).resize((video1_width, video1_height)).save(image1_path, format="jpeg")
+        # center of win2
+        win2_idx = win2_center_idx
+        frame2, image2, hash2 = win2[win2_idx]
+        hashdiff = compare_hashes(hash1, hash2)
+        imagesim = compare_images(image1, image2, min_width, min_height)
+        image2_path = f"/run/user/{os.getuid()}/videodiff.py.frame1-{frame1:05d}-no-match-image2-{frame2:05d}-hashdiff-{hashdiff}-imagesim-{imagesim}.jpg"
+        print(f"writing {image2_path}")
+        PIL.Image.fromarray(image2).resize((video1_width, video1_height)).save(image2_path, format="jpeg")
 
     """
     if matches:
